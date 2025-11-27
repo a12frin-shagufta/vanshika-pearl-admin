@@ -614,9 +614,9 @@ if (missingMedia.length > 0) {
                   {imgFile && <img src={URL.createObjectURL(imgFile)} alt="" className="h-20 mt-2 object-cover" />}
 
                   {/* Video input */}
-                  <label className="block text-sm mt-3 mb-2">Video (optional)</label>
+                  {/* <label className="block text-sm mt-3 mb-2">Video (optional)</label>
                   <input type="file" accept="video/*" onChange={(e) => handleVideoChange(color, e.target.files?.[0])} />
-                  {vidFile && <video src={URL.createObjectURL(vidFile)} className="h-32 mt-2" controls />}
+                  {vidFile && <video src={URL.createObjectURL(vidFile)} className="h-32 mt-2" controls />} */}
                 </div>
               );
             })}

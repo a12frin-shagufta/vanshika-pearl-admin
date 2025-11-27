@@ -1,1 +1,28 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Libre+Baskerville:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @import "tailwindcss";
+body {
+   
+  background-color: #fffdf8;
+
+  font-family: 'Inter', sans-serif;
+  color: #000000;
+}
+
+/* custom classes */
+.custom {
+  font-family: 'Great Vibes', cursive;
+}
+
+
+
+
+
+h1,h2 {
+  font-family: "Cormorant Garamond", serif;
+ 
+}

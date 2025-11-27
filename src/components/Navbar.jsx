@@ -10,14 +10,14 @@ const Navbar = ({ setToken }) => {
   return (
     <nav className="w-full bg-white shadow-md py-4 px-6 flex justify-between items-center">
       {/* Left: Logo */}
-      <div className="text-xl font-semibold text-amber-700">
-       <img src="./assets/images/logo1.png" alt="" className='w-20' />
+      <div className="text-xl font-semibold text-[#eba5aa]">
+      <h1 className='custom'>Vanshine Collection 🤍</h1>
       </div>
 
       {/* Right: Logout Button */}
       <button onClick={handleLogout}
        
-        className="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 transition"
+        className="bg-[#eba5aa] text-white px-4 py-2 rounded hover:bg-amber-700 transition"
       >
         Logout
       </button>
