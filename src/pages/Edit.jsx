@@ -62,7 +62,7 @@ const [editingDetailValue, setEditingDetailValue] = useState("");
     const fetch = async () => {
       try {
         const [productRes, categoryRes] = await Promise.all([
-          axios.post(`${backendUrl}/api/product/single`, { productId: id }),
+          axios.post(`${backendUrl}/api/product/single`, { id }),
           axios.get(`${backendUrl}/api/category/list`),
         ]);
 
