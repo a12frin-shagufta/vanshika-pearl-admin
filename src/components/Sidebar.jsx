@@ -67,7 +67,7 @@ const Sidebar = () => {
           <p className="hidden md:block">Category</p>
         </NavLink>
 
-         <NavLink
+         {/* <NavLink
           to="/testimonials"
           className={({ isActive }) =>
             `flex items-center gap-3 border border-gray-300 border-r-0 px-3 py-2 rounded-l-lg ${
@@ -77,7 +77,7 @@ const Sidebar = () => {
         >
           <FaRegSmileBeam className="text-gray-800 text-3xl" />
           <p className="hidden md:block">Happy Customer</p>
-        </NavLink>
+        </NavLink> */}
       </div>
     </div>
   );

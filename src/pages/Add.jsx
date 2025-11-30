@@ -244,36 +244,56 @@ const cancelDetailEdit = () => {
 
   const handleImageChange = async (color, file) => {
   if (!file) return toast.error("No file selected");
-  if (!file.type.startsWith("image/")) return toast.error("Please select a valid image file");
+  if (!file.type.startsWith("image/") && !file.name.toLowerCase().endsWith(".heic")) {
+    return toast.error("Please select a valid image file");
+  }
   if (file.size > MAX_IMAGE_MB * 1024 * 1024)
     return toast.error(`Image exceeds ${MAX_IMAGE_MB}MB limit`);
 
-  try {
-    // 🧩 Always clean gallery images before upload (fixes phone photo errors)
-    const safeFile = await cleanImageBeforeUpload(file);
+  // 🔍 Detect HEIC by MIME or extension
+  const isHeic =
+    file.type === "image/heic" ||
+    file.name.toLowerCase().endsWith(".heic");
 
-    let processed = safeFile;
-    if (safeFile.size > 1 * 1024 * 1024) {
+  try {
+    let safeFile = file;
+
+    if (!isHeic) {
+      // For normal formats (jpg/png/webp...), try to clean + optionally compress
       try {
-        processed = await imageCompression(safeFile, {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true,
-        });
-      } catch {
-        processed = safeFile;
+        safeFile = await cleanImageBeforeUpload(file);
+      } catch (err) {
+        console.warn("cleanImageBeforeUpload failed, using original file:", err);
+        safeFile = file; // fallback
       }
+
+      if (safeFile.size > 1 * 1024 * 1024) {
+        try {
+          safeFile = await imageCompression(safeFile, {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          });
+        } catch (err) {
+          console.warn("imageCompression failed, using uncompressed file:", err);
+          // keep safeFile as is
+        }
+      }
+    } else {
+      // ℹ️ For HEIC just use as-is. Browser can't render it, but backend + Cloudinary can upload it.
+      console.info("HEIC file detected – skipping cleanImageBeforeUpload.");
     }
 
     setForm((prev) => ({
       ...prev,
-      images: { ...prev.images, [color]: processed },
+      images: { ...prev.images, [color]: safeFile },
     }));
   } catch (err) {
-    console.error("Image cleaning failed:", err);
-    toast.error("Image processing failed — try another image");
+    console.error("Image handling failed:", err);
+    toast.error("Image processing failed — but you can try converting to JPG/PNG first");
   }
 };
+
 
 // 🧹 Clean and convert any image before upload (fixes gallery upload issue)
 
@@ -611,7 +631,22 @@ if (missingMedia.length > 0) {
                   {/* Image input */}
                   <label className="block text-sm mb-2">Image *</label>
                   <input type="file" accept="image/*" onChange={(e) => handleImageChange(color, e.target.files?.[0])} />
-                  {imgFile && <img src={URL.createObjectURL(imgFile)} alt="" className="h-20 mt-2 object-cover" />}
+                  {imgFile && (
+  <>
+    {imgFile.name.toLowerCase().endsWith(".heic") ? (
+      <div className="text-xs text-gray-500 mt-2">
+        HEIC image selected (preview not available in browser, but it will be uploaded).
+      </div>
+    ) : (
+      <img
+        src={URL.createObjectURL(imgFile)}
+        alt=""
+        className="h-20 mt-2 object-cover"
+      />
+    )}
+  </>
+)}
+
 
                   {/* Video input */}
                   {/* <label className="block text-sm mt-3 mb-2">Video (optional)</label>

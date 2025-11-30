@@ -542,33 +542,43 @@ const commitVariantColor = (index) => {
                     </div>
                     <div className="mt-2 text-sm text-gray-600">Existing images/videos (kept if you don't upload new files)</div>
 
-                    <div className="mt-2 flex gap-3 items-center">
-                      {/* existing image preview */}
-                      <div className="w-24 h-20 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
-                        {v.newImageFile ? (
-                          <img src={URL.createObjectURL(v.newImageFile)} alt="preview" className="w-full h-full object-cover" />
-                        ) : v.images?.[0] ? (
-                          <img src={v.images[0]} alt="existing" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xs text-gray-400">No image</span>
-                        )}
-                      </div>
+                    <div className="w-24 h-20 bg-gray-100 rounded overflow-hidden flex items-center justify-center text-center px-1">
+  {v.newImageFile ? (
+    // 📂 New file selected (local)
+    v.newImageFile.name?.toLowerCase().endsWith(".heic") ? (
+      <span className="text-[10px] text-gray-500">
+        HEIC selected<br />Preview not supported in browser
+      </span>
+    ) : (
+      <img
+        src={URL.createObjectURL(v.newImageFile)}
+        alt="preview"
+        className="w-full h-full object-cover"
+      />
+    )
+  ) : v.images?.[0] ? (
+    // 🌐 Existing URL from Cloudinary / DB
+    v.images[0].toLowerCase().endsWith(".heic") ? (
+      <span className="text-[10px] text-gray-500">
+        HEIC image<br />Preview may not show
+      </span>
+    ) : (
+      <img
+        src={v.images[0]}
+        alt="existing"
+        className="w-full h-full object-cover"
+      />
+    )
+  ) : (
+    <span className="text-xs text-gray-400">No image</span>
+  )}
 
-                      <div>
-                        <label className="block text-xs">Replace Image</label>
-                        <input type="file" accept="image/*" onChange={(e) => handleVariantImageFile(idx, e.target.files?.[0] || null)} disabled={v.removed} />
-                      </div>
+</div>
+ <div>
+    <label className="block text-xs">Replace Image</label>
+    <input type="file" accept="image/*" onChange={(e) => handleVariantImageFile(idx, e.target.files?.[0] || null)} disabled={v.removed} />
+  </div>
 
-                      <div className="w-36">
-                        <label className="block text-xs">Replace Video (optional)</label>
-                        <input type="file" accept="video/*" onChange={(e) => handleVariantVideoFile(idx, e.target.files?.[0] || null)} disabled={v.removed} />
-                        {v.newVideoFile ? (
-                          <video src={URL.createObjectURL(v.newVideoFile)} className="mt-2 h-16 w-full object-cover" controls />
-                        ) : v.videos?.[0] ? (
-                          <video src={v.videos[0]} className="mt-2 h-16 w-full object-cover" controls />
-                        ) : null}
-                      </div>
-                    </div>
                   </div>
 
                   <div className="ml-4 flex flex-col gap-2">
