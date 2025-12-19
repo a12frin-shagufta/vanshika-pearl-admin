@@ -14,7 +14,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Testimonials from './pages/Testimonials';
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL;
-export const currency = 'PKR';
+export const currency = '$';
 
 const App = () => {
   const [token, setToken] = useState('');
