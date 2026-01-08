@@ -20,7 +20,8 @@ const Add = ({ token }) => {
     description: "",
     details: [],
     colors: [],
-    images: {}, // { colorName: File }
+    images: {}, // { colorName: File[] }
+
     faqs: [],
     size: "",
     variantStocks: {},
@@ -242,56 +243,53 @@ const cancelDetailEdit = () => {
 };
 
 
-  const handleImageChange = async (color, file) => {
-  if (!file) return toast.error("No file selected");
-  if (!file.type.startsWith("image/") && !file.name.toLowerCase().endsWith(".heic")) {
-    return toast.error("Please select a valid image file");
-  }
-  if (file.size > MAX_IMAGE_MB * 1024 * 1024)
-    return toast.error(`Image exceeds ${MAX_IMAGE_MB}MB limit`);
+  const handleImageChange = async (color, files) => {
+  if (!files || files.length === 0) return;
 
-  // 🔍 Detect HEIC by MIME or extension
-  const isHeic =
-    file.type === "image/heic" ||
-    file.name.toLowerCase().endsWith(".heic");
+  const processedFiles = [];
 
-  try {
+  for (const file of Array.from(files)) {
+    if (
+      !file.type.startsWith("image/") &&
+      !file.name.toLowerCase().endsWith(".heic")
+    ) {
+      toast.error("Invalid image file");
+      continue;
+    }
+
+    if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+      toast.error(`Image exceeds ${MAX_IMAGE_MB}MB`);
+      continue;
+    }
+
     let safeFile = file;
 
-    if (!isHeic) {
-      // For normal formats (jpg/png/webp...), try to clean + optionally compress
-      try {
+    try {
+      if (!file.name.toLowerCase().endsWith(".heic")) {
         safeFile = await cleanImageBeforeUpload(file);
-      } catch (err) {
-        console.warn("cleanImageBeforeUpload failed, using original file:", err);
-        safeFile = file; // fallback
-      }
 
-      if (safeFile.size > 1 * 1024 * 1024) {
-        try {
+        if (safeFile.size > 1 * 1024 * 1024) {
           safeFile = await imageCompression(safeFile, {
             maxSizeMB: 1,
             maxWidthOrHeight: 1920,
             useWebWorker: true,
           });
-        } catch (err) {
-          console.warn("imageCompression failed, using uncompressed file:", err);
-          // keep safeFile as is
         }
       }
-    } else {
-      // ℹ️ For HEIC just use as-is. Browser can't render it, but backend + Cloudinary can upload it.
-      console.info("HEIC file detected – skipping cleanImageBeforeUpload.");
+    } catch {
+      safeFile = file;
     }
 
-    setForm((prev) => ({
-      ...prev,
-      images: { ...prev.images, [color]: safeFile },
-    }));
-  } catch (err) {
-    console.error("Image handling failed:", err);
-    toast.error("Image processing failed — but you can try converting to JPG/PNG first");
+    processedFiles.push(safeFile);
   }
+
+  setForm((prev) => ({
+    ...prev,
+    images: {
+      ...prev.images,
+      [color]: [...(prev.images[color] || []), ...processedFiles],
+    },
+  }));
 };
 
 
@@ -321,6 +319,22 @@ const cancelDetailEdit = () => {
     }
   };
 
+  const removeVariantImage = (color, index) => {
+  setForm((prev) => {
+    const nextImages = [...(prev.images[color] || [])];
+    nextImages.splice(index, 1);
+
+    return {
+      ...prev,
+      images: {
+        ...prev.images,
+        [color]: nextImages,
+      },
+    };
+  });
+};
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -336,7 +350,10 @@ const cancelDetailEdit = () => {
         setIsLoading(false);
         return;
       }
-     const missingMedia = form.colors.filter((c) => !form.images[c] && !videoFiles[c]);
+    const missingMedia = form.colors.filter(
+  (c) => (!form.images[c] || form.images[c].length === 0) && !videoFiles[c]
+);
+
 if (missingMedia.length > 0) {
   toast.error(`Please upload an image or a video for: ${missingMedia.join(", ")}`);
   setIsLoading(false);
@@ -366,12 +383,19 @@ if (missingMedia.length > 0) {
       formData.append("difficulty", form.difficulty || "easy");
 
 
-      form.colors.forEach((color, i) => {
-        const imageFile = form.images[color];
-        if (imageFile) formData.append(`variantImage${i}`, imageFile, imageFile.name);
-        const videoFile = videoFiles[color];
-        if (videoFile) formData.append(`variantVideo${i}`, videoFile, videoFile.name);
-      });
+     form.colors.forEach((color, i) => {
+  const imgFiles = form.images[color] || [];
+
+  // append ALL images for this color
+  for (const file of imgFiles) {
+    formData.append(`variantImage${i}`, file, file.name);
+  }
+
+  const videoFile = videoFiles[color];
+  if (videoFile) {
+    formData.append(`variantVideo${i}`, videoFile, videoFile.name);
+  }
+});
 
       const response = await axiosWithRetry({
         method: "post",
@@ -573,7 +597,8 @@ if (missingMedia.length > 0) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {form.colors.map((color, idx) => {
-              const imgFile = form.images[color];
+             const imgFiles = form.images[color] || [];
+
               const vidFile = videoFiles[color];
               return (
                 <div key={color} className="border p-4 rounded-lg">
@@ -629,23 +654,69 @@ if (missingMedia.length > 0) {
                   />
 
                   {/* Image input */}
+
                   <label className="block text-sm mb-2">Image *</label>
-                  <input type="file" accept="image/*" onChange={(e) => handleImageChange(color, e.target.files?.[0])} />
-                  {imgFile && (
-  <>
-    {imgFile.name.toLowerCase().endsWith(".heic") ? (
-      <div className="text-xs text-gray-500 mt-2">
-        HEIC image selected (preview not available in browser, but it will be uploaded).
+                 <label className="block text-sm font-medium mb-2">
+  Images for <span className="capitalize">{color}</span>
+</label>
+
+{/* Upload box */}
+<label className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-blue-500 transition">
+  <span className="text-sm text-gray-600">
+    Click or drag images here
+  </span>
+  <span className="text-xs text-gray-400 mt-1">
+    You can select multiple images (1st image = main)
+  </span>
+
+  <input
+    type="file"
+    accept="image/*"
+    multiple
+    className="absolute inset-0 opacity-0 cursor-pointer"
+    onChange={(e) => handleImageChange(color, e.target.files)}
+  />
+</label>
+
+
+  {imgFiles.length > 0 && (
+  <div className="grid grid-cols-4 gap-3 mt-4">
+    {imgFiles.map((file, i) => (
+      <div key={i} className="relative group">
+        {file.name.toLowerCase().endsWith(".heic") ? (
+          <div className="h-20 flex items-center justify-center text-xs text-gray-500 border rounded">
+            HEIC
+          </div>
+        ) : (
+          <img
+            src={URL.createObjectURL(file)}
+            alt=""
+            className={`h-20 w-full object-cover rounded ${
+              i === 0 ? "ring-2 ring-green-500" : ""
+            }`}
+          />
+        )}
+
+        {/* Main image badge */}
+        {i === 0 && (
+          <span className="absolute top-1 left-1 bg-green-600 text-white text-[10px] px-1 rounded">
+            MAIN
+          </span>
+        )}
+
+        {/* Remove button */}
+        <button
+          type="button"
+          onClick={() => removeVariantImage(color, i)}
+          className="absolute top-1 right-1 bg-black/60 text-white text-xs rounded-full w-5 h-5 hidden group-hover:flex items-center justify-center"
+        >
+          ✕
+        </button>
       </div>
-    ) : (
-      <img
-        src={URL.createObjectURL(imgFile)}
-        alt=""
-        className="h-20 mt-2 object-cover"
-      />
-    )}
-  </>
+    ))}
+  </div>
 )}
+
 
 
                   {/* Video input */}

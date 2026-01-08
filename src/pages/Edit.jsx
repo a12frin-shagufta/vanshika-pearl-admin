@@ -16,7 +16,7 @@ const Edit = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingDetailIdx, setEditingDetailIdx] = useState(null);
-const [editingDetailValue, setEditingDetailValue] = useState("");
+  const [editingDetailValue, setEditingDetailValue] = useState("");
 
   // product-level fields
   const [form, setForm] = useState({
@@ -105,17 +105,25 @@ const [editingDetailValue, setEditingDetailValue] = useState("");
           size: product.size || "",
           details: detailsArr,
           faqs: faqsArr,
-           difficulty: product.difficulty || "easy", // ⚡ add
+          difficulty: product.difficulty || "easy", // ⚡ add
         }));
 
         // Normalize variants into our UI shape
         const v = (product.variants || []).map((vv, idx) => ({
           id: vv._id || `existing-${idx}`,
           color: vv.color || `variant-${idx}`,
-          stock: typeof vv.stock === "number" ? vv.stock : (product.stock || 0),
-          images: Array.isArray(vv.images) ? vv.images : (vv.images ? [vv.images] : []),
-          videos: Array.isArray(vv.videos) ? vv.videos : (vv.videos ? [vv.videos] : []),
-          newImageFile: null,
+          stock: typeof vv.stock === "number" ? vv.stock : product.stock || 0,
+          images: Array.isArray(vv.images)
+            ? vv.images
+            : vv.images
+            ? [vv.images]
+            : [],
+          videos: Array.isArray(vv.videos)
+            ? vv.videos
+            : vv.videos
+            ? [vv.videos]
+            : [],
+          newImageFiles: [],
           newVideoFile: null,
           removed: false,
         }));
@@ -132,51 +140,57 @@ const [editingDetailValue, setEditingDetailValue] = useState("");
     fetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-const beginEditDetail = (idx) => {
-  setEditingDetailIdx(idx);
-  setEditingDetailValue(form.details[idx] ?? "");
-};
-
-const saveDetailEdit = () => {
-  const v = (editingDetailValue || "").trim();
-  if (!v) return toast.error("Detail cannot be empty");
-  setForm((prev) => ({
-    ...prev,
-    details: prev.details.map((d, i) => (i === editingDetailIdx ? v : d)),
-  }));
-  setEditingDetailIdx(null);
-  setEditingDetailValue("");
-};
-
-const cancelDetailEdit = () => {
-  setEditingDetailIdx(null);
-  setEditingDetailValue("");
-};
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+  const beginEditDetail = (idx) => {
+    setEditingDetailIdx(idx);
+    setEditingDetailValue(form.details[idx] ?? "");
   };
 
-  const normalizeColor = (s) => String(s || "").trim().toLowerCase();
+  const saveDetailEdit = () => {
+    const v = (editingDetailValue || "").trim();
+    if (!v) return toast.error("Detail cannot be empty");
+    setForm((prev) => ({
+      ...prev,
+      details: prev.details.map((d, i) => (i === editingDetailIdx ? v : d)),
+    }));
+    setEditingDetailIdx(null);
+    setEditingDetailValue("");
+  };
 
-const commitVariantColor = (index) => {
-  const raw = variants[index]?.color;
-  const next = normalizeColor(raw);
-  if (!next) {
-    toast.error("Enter a valid color");
-    return;
-  }
-  // prevent duplicate colors among non-removed variants
-  const dup = variants.some(
-    (v, i) => !v.removed && i !== index && normalizeColor(v.color) === next
-  );
-  if (dup) {
-    toast.warn(`"${next}" already exists`);
-    return;
-  }
-  // write back normalized value
-  updateVariantAt(index, { color: next });
-};
+  const cancelDetailEdit = () => {
+    setEditingDetailIdx(null);
+    setEditingDetailValue("");
+  };
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const normalizeColor = (s) =>
+    String(s || "")
+      .trim()
+      .toLowerCase();
+
+  const commitVariantColor = (index) => {
+    const raw = variants[index]?.color;
+    const next = normalizeColor(raw);
+    if (!next) {
+      toast.error("Enter a valid color");
+      return;
+    }
+    // prevent duplicate colors among non-removed variants
+    const dup = variants.some(
+      (v, i) => !v.removed && i !== index && normalizeColor(v.color) === next
+    );
+    if (dup) {
+      toast.warn(`"${next}" already exists`);
+      return;
+    }
+    // write back normalized value
+    updateVariantAt(index, { color: next });
+  };
 
   // Details management
   const handleAddDetail = () => {
@@ -186,15 +200,18 @@ const commitVariantColor = (index) => {
     setForm((p) => ({ ...p, details: [...p.details, t] }));
     setDetailInput("");
   };
-  const handleRemoveDetail = (d) => setForm((p) => ({ ...p, details: p.details.filter((x) => x !== d) }));
+  const handleRemoveDetail = (d) =>
+    setForm((p) => ({ ...p, details: p.details.filter((x) => x !== d) }));
 
   // FAQ management
   const handleAddFaq = () => {
-    if (!faqInput.question.trim() || !faqInput.answer.trim()) return toast.error("Provide both question and answer");
+    if (!faqInput.question.trim() || !faqInput.answer.trim())
+      return toast.error("Provide both question and answer");
     setForm((p) => ({ ...p, faqs: [...p.faqs, { ...faqInput }] }));
     setFaqInput({ question: "", answer: "" });
   };
-  const handleRemoveFaq = (idx) => setForm((p) => ({ ...p, faqs: p.faqs.filter((_, i) => i !== idx) }));
+  const handleRemoveFaq = (idx) =>
+    setForm((p) => ({ ...p, faqs: p.faqs.filter((_, i) => i !== idx) }));
 
   // Variant helpers
   const updateVariantAt = (index, patch) => {
@@ -205,12 +222,28 @@ const commitVariantColor = (index) => {
     });
   };
 
-  const handleVariantColorChange = (index, value) => updateVariantAt(index, { color: value });
-  const handleVariantStockChange = (index, value) => updateVariantAt(index, { stock: Number(value || 0) });
+  const handleVariantColorChange = (index, value) =>
+    updateVariantAt(index, { color: value });
+  const handleVariantStockChange = (index, value) =>
+    updateVariantAt(index, { stock: Number(value || 0) });
 
-  const handleVariantImageFile = (index, file) => {
-    updateVariantAt(index, { newImageFile: file || null });
-  };
+  const handleVariantImageFile = (index, files) => {
+  if (!files || files.length === 0) return;
+
+  setVariants((prev) => {
+    const copy = [...prev];
+    const existing = copy[index].newImageFiles || [];
+
+    copy[index] = {
+      ...copy[index],
+      newImageFiles: [...existing, ...Array.from(files)],
+    };
+
+    return copy;
+  });
+};
+
+
   const handleVariantVideoFile = (index, file) => {
     updateVariantAt(index, { newVideoFile: file || null });
   };
@@ -234,7 +267,12 @@ const commitVariantColor = (index) => {
     const color = newColorInput.trim();
     if (!color) return toast.error("Enter color name");
     // ensure unique color
-    if (variants.some((v) => !v.removed && String(v.color).toLowerCase() === color.toLowerCase())) {
+    if (
+      variants.some(
+        (v) =>
+          !v.removed && String(v.color).toLowerCase() === color.toLowerCase()
+      )
+    ) {
       return toast.warn("Variant color already exists");
     }
     setVariants((prev) => [
@@ -245,7 +283,7 @@ const commitVariantColor = (index) => {
         stock: 0,
         images: [],
         videos: [],
-        newImageFile: null,
+        newImageFile: [],
         newVideoFile: null,
         removed: false,
       },
@@ -254,6 +292,19 @@ const commitVariantColor = (index) => {
   };
 
   // Submit: build FormData and send to backend
+  const removeNewVariantImage = (variantIndex, imageIndex) => {
+    setVariants((prev) => {
+      const copy = [...prev];
+      const imgs = [...(copy[variantIndex].newImageFiles || [])];
+      imgs.splice(imageIndex, 1);
+      copy[variantIndex] = {
+        ...copy[variantIndex],
+        newImageFiles: imgs,
+      };
+      return copy;
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -272,7 +323,9 @@ const commitVariantColor = (index) => {
     for (let i = 0; i < activeVariants.length; i++) {
       const v = activeVariants[i];
       if (!v.images?.length && !v.newImageFile) {
-        toast.error(`Variant "${v.color}" must have an image (upload or keep existing).`);
+        toast.error(
+          `Variant "${v.color}" must have an image (upload or keep existing).`
+        );
         return;
       }
     }
@@ -315,8 +368,10 @@ const commitVariantColor = (index) => {
         const v = finalVariants[i];
 
         // If user provided a new image file for this variant, append field variantImage{i}
-        if (v.newImageFile instanceof File) {
-          fd.append(`variantImage${i}`, v.newImageFile, v.newImageFile.name);
+        if (Array.isArray(v.newImageFiles)) {
+          for (const file of v.newImageFiles) {
+            fd.append(`variantImage${i}`, file, file.name);
+          }
         } else {
           // If no new file but there are existing URLs, we don't append a file; backend will reuse existing images by matching color
           // Some backends want the existing URLs too; our controller reuses existing product.variants if new image not provided.
@@ -334,7 +389,10 @@ const commitVariantColor = (index) => {
         "Content-Type": "multipart/form-data",
       };
 
-      const res = await axios.post(`${backendUrl}/api/product/update`, fd, { headers, timeout: 10 * 60 * 1000 });
+      const res = await axios.post(`${backendUrl}/api/product/update`, fd, {
+        headers,
+        timeout: 10 * 60 * 1000,
+      });
 
       if (res?.data?.success) {
         toast.success(res.data.message || "Product updated");
@@ -344,14 +402,22 @@ const commitVariantColor = (index) => {
       }
     } catch (err) {
       console.error("Update error:", err);
-      toast.error(err?.response?.data?.message || err.message || "Failed to update product");
+      toast.error(
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to update product"
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="min-h-[60vh] flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -363,145 +429,266 @@ const commitVariantColor = (index) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium">Product Name*</label>
-            <input name="name" value={form.name} onChange={handleInputChange} className="w-full p-2 border rounded" required />
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+              required
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Price*</label>
-            <input name="price" type="number" value={form.price} onChange={handleInputChange} className="w-full p-2 border rounded" required />
+            <input
+              name="price"
+              type="number"
+              value={form.price}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+              required
+            />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Category*</label>
-            <select name="category" value={form.category} onChange={handleInputChange} className="w-full p-2 border rounded" required>
+            <select
+              name="category"
+              value={form.category}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+              required
+            >
               <option value="">Select category</option>
-              {categories.map((c) => <option key={c._id} value={c.name}>{c.name}</option>)}
+              {categories.map((c) => (
+                <option key={c._id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
-  <label className="block text-sm font-medium">Difficulty*</label>
-  <select
-    name="difficulty"
-    value={form.difficulty}
-    onChange={handleInputChange}
-    className="w-full p-2 border rounded"
-    required
-  >
-    <option value="easy">Easy</option>
-    <option value="medium">Medium</option>
-    <option value="difficult">Difficult</option>
-  </select>
-</div>
-
+            <label className="block text-sm font-medium">Difficulty*</label>
+            <select
+              name="difficulty"
+              value={form.difficulty}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+              required
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="difficult">Difficult</option>
+            </select>
+          </div>
 
           <div>
             <label className="block text-sm font-medium">Subcategory</label>
-            <select name="subcategory" value={form.subcategory} onChange={handleInputChange} className="w-full p-2 border rounded">
+            <select
+              name="subcategory"
+              value={form.subcategory}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+            >
               <option value="">Select subcategory</option>
-              {categories.find((c) => c.name === form.category)?.subcategories?.map((s, i) => <option key={i} value={s}>{s}</option>)}
+              {categories
+                .find((c) => c.name === form.category)
+                ?.subcategories?.map((s, i) => (
+                  <option key={i} value={s}>
+                    {s}
+                  </option>
+                ))}
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium">Global Stock*</label>
-            <input name="stock" type="number" min="0" value={form.stock} onChange={handleInputChange} className="w-full p-2 border rounded" required />
-            <p className="text-xs text-gray-500 mt-1">Used as fallback for variants without per-variant stock</p>
+            <input
+              name="stock"
+              type="number"
+              min="0"
+              value={form.stock}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Used as fallback for variants without per-variant stock
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <input type="checkbox" name="bestseller" checked={form.bestseller} onChange={handleInputChange} className="h-4 w-4" />
+            <input
+              type="checkbox"
+              name="bestseller"
+              checked={form.bestseller}
+              onChange={handleInputChange}
+              className="h-4 w-4"
+            />
             <label className="text-sm">Mark as Bestseller</label>
           </div>
 
           <div>
             <label className="block text-sm font-medium">Size</label>
-            <input name="size" value={form.size} onChange={handleInputChange} className="w-full p-2 border rounded" />
+            <input
+              name="size"
+              value={form.size}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded"
+            />
           </div>
         </div>
 
         {/* Description */}
         <div>
           <label className="block text-sm font-medium">Description*</label>
-          <textarea name="description" value={form.description} onChange={handleInputChange} rows={4} className="w-full p-2 border rounded" required />
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleInputChange}
+            rows={4}
+            className="w-full p-2 border rounded"
+            required
+          />
         </div>
 
         {/* Details */}
         <div>
-          <label className="block text-sm font-medium mb-2">Product Details</label>
+          <label className="block text-sm font-medium mb-2">
+            Product Details
+          </label>
           <div className="flex gap-2 mb-3">
-            <input value={detailInput} onChange={(e) => setDetailInput(e.target.value)} placeholder="Add bullet point" className="flex-1 p-2 border rounded" />
-            <button type="button" onClick={handleAddDetail} className="px-3 bg-blue-600 text-white rounded">Add</button>
+            <input
+              value={detailInput}
+              onChange={(e) => setDetailInput(e.target.value)}
+              placeholder="Add bullet point"
+              className="flex-1 p-2 border rounded"
+            />
+            <button
+              type="button"
+              onClick={handleAddDetail}
+              className="px-3 bg-blue-600 text-white rounded"
+            >
+              Add
+            </button>
           </div>
           <ul className="space-y-2">
-  {form.details.map((d, idx) => {
-    const isEditing = editingDetailIdx === idx;
-    return (
-      <li key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-        <div className="flex-1 mr-3">
-          {isEditing ? (
-            <input
-              autoFocus
-              className="w-full p-2 border rounded"
-              value={editingDetailValue}
-              onChange={(e) => setEditingDetailValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveDetailEdit();
-                if (e.key === "Escape") cancelDetailEdit();
-              }}
-            />
-          ) : (
-            <span>{d}</span>
-          )}
-        </div>
+            {form.details.map((d, idx) => {
+              const isEditing = editingDetailIdx === idx;
+              return (
+                <li
+                  key={idx}
+                  className="flex justify-between items-center bg-gray-50 p-2 rounded"
+                >
+                  <div className="flex-1 mr-3">
+                    {isEditing ? (
+                      <input
+                        autoFocus
+                        className="w-full p-2 border rounded"
+                        value={editingDetailValue}
+                        onChange={(e) => setEditingDetailValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveDetailEdit();
+                          if (e.key === "Escape") cancelDetailEdit();
+                        }}
+                      />
+                    ) : (
+                      <span>{d}</span>
+                    )}
+                  </div>
 
-        <div className="flex gap-2">
-          {isEditing ? (
-            <>
-              <button type="button" onClick={saveDetailEdit} className="px-3 py-1 bg-green-600 text-white rounded">
-                Save
-              </button>
-              <button type="button" onClick={cancelDetailEdit} className="px-3 py-1 bg-gray-300 rounded">
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" onClick={() => beginEditDetail(idx)} className="text-blue-600 text-sm">
-                Edit
-              </button>
-              <button type="button" onClick={() => handleRemoveDetail(d)} className="text-red-500 text-sm">
-                Remove
-              </button>
-            </>
-          )}
-        </div>
-      </li>
-    );
-  })}
-</ul>
-
+                  <div className="flex gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={saveDetailEdit}
+                          className="px-3 py-1 bg-green-600 text-white rounded"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelDetailEdit}
+                          className="px-3 py-1 bg-gray-300 rounded"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => beginEditDetail(idx)}
+                          className="text-blue-600 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDetail(d)}
+                          className="text-red-500 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </div>
 
         {/* FAQs */}
         <div>
           <label className="block text-sm font-medium mb-2">FAQs</label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-            <input placeholder="Question" value={faqInput.question} onChange={(e) => setFaqInput((p) => ({ ...p, question: e.target.value }))} className="p-2 border rounded col-span-2" />
-            <input placeholder="Answer" value={faqInput.answer} onChange={(e) => setFaqInput((p) => ({ ...p, answer: e.target.value }))} className="p-2 border rounded" />
+            <input
+              placeholder="Question"
+              value={faqInput.question}
+              onChange={(e) =>
+                setFaqInput((p) => ({ ...p, question: e.target.value }))
+              }
+              className="p-2 border rounded col-span-2"
+            />
+            <input
+              placeholder="Answer"
+              value={faqInput.answer}
+              onChange={(e) =>
+                setFaqInput((p) => ({ ...p, answer: e.target.value }))
+              }
+              className="p-2 border rounded"
+            />
             <div className="md:col-span-3">
-              <button type="button" onClick={handleAddFaq} className="mt-2 px-3 py-1 bg-blue-600 text-white rounded">Add FAQ</button>
+              <button
+                type="button"
+                onClick={handleAddFaq}
+                className="mt-2 px-3 py-1 bg-blue-600 text-white rounded"
+              >
+                Add FAQ
+              </button>
             </div>
           </div>
 
           <ul className="space-y-2">
             {form.faqs.map((fq, idx) => (
-              <li key={idx} className="border p-2 rounded flex justify-between items-center">
+              <li
+                key={idx}
+                className="border p-2 rounded flex justify-between items-center"
+              >
                 <div>
                   <p className="font-semibold">{fq.question}</p>
                   <p className="text-sm text-gray-600">{fq.answer}</p>
                 </div>
-                <button type="button" onClick={() => handleRemoveFaq(idx)} className="text-red-500">Remove</button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFaq(idx)}
+                  className="text-red-500"
+                >
+                  Remove
+                </button>
               </li>
             ))}
           </ul>
@@ -510,57 +697,93 @@ const commitVariantColor = (index) => {
         {/* Variants editor */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium">Variants (colors)</label>
+            <label className="block text-sm font-medium">
+              Variants (colors)
+            </label>
             <div className="flex items-center gap-2">
-              <input placeholder="New color" value={newColorInput} onChange={(e) => setNewColorInput(e.target.value)} className="p-1 border rounded" />
-              <button type="button" onClick={handleAddNewVariant} className="px-3 py-1 bg-green-600 text-white rounded">Add Variant</button>
+              <input
+                placeholder="New color"
+                value={newColorInput}
+                onChange={(e) => setNewColorInput(e.target.value)}
+                className="p-1 border rounded"
+              />
+              <button
+                type="button"
+                onClick={handleAddNewVariant}
+                className="px-3 py-1 bg-green-600 text-white rounded"
+              >
+                Add Variant
+              </button>
             </div>
           </div>
 
           <div className="grid gap-4">
             {variants.map((v, idx) => (
-              <div key={v.id} className={`border p-3 rounded ${v.removed ? "opacity-50 bg-red-50" : "bg-white"}`}>
+              <div
+                key={v.id}
+                className={`border p-3 rounded ${
+                  v.removed ? "opacity-50 bg-red-50" : "bg-white"
+                }`}
+              >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex gap-2 items-center">
                       <input
-  className="p-2 border rounded w-48"
-  value={v.color}
-  onChange={(e) => handleVariantColorChange(idx, e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commitVariantColor(idx);
-    }
-  }}
-  onBlur={() => commitVariantColor(idx)}
-  disabled={v.removed}
-/>
+                        className="p-2 border rounded w-48"
+                        value={v.color}
+                        onChange={(e) =>
+                          handleVariantColorChange(idx, e.target.value)
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            commitVariantColor(idx);
+                          }
+                        }}
+                        onBlur={() => commitVariantColor(idx)}
+                        disabled={v.removed}
+                      />
 
-                      <input type="number" className="p-2 border rounded w-28" value={v.stock} onChange={(e) => handleVariantStockChange(idx, e.target.value)} disabled={v.removed} min="0" />
+                      <input
+                        type="number"
+                        className="p-2 border rounded w-28"
+                        value={v.stock}
+                        onChange={(e) =>
+                          handleVariantStockChange(idx, e.target.value)
+                        }
+                        disabled={v.removed}
+                        min="0"
+                      />
                       <span className="text-xs text-gray-500">Stock</span>
                     </div>
-                    <div className="mt-2 text-sm text-gray-600">Existing images/videos (kept if you don't upload new files)</div>
+                    <div className="mt-2 text-sm text-gray-600">
+                      Existing images/videos (kept if you don't upload new
+                      files)
+                    </div>
 
                     <div className="w-24 h-20 bg-gray-100 rounded overflow-hidden flex items-center justify-center text-center px-1">
-  {v.newImageFile ? (
-    // 📂 New file selected (local)
-    v.newImageFile.name?.toLowerCase().endsWith(".heic") ? (
-      <span className="text-[10px] text-gray-500">
-        HEIC selected<br />Preview not supported in browser
-      </span>
-    ) : (
+                   <div className="w-24 h-20 bg-gray-100 rounded overflow-hidden flex items-center justify-center text-center px-1">
+  {v.newImageFiles?.length > 0 ? (
+    v.newImageFiles[0] instanceof File &&
+    !v.newImageFiles[0].name.toLowerCase().endsWith(".heic") ? (
       <img
-        src={URL.createObjectURL(v.newImageFile)}
+        src={URL.createObjectURL(v.newImageFiles[0])}
         alt="preview"
         className="w-full h-full object-cover"
       />
+    ) : (
+      <span className="text-[10px] text-gray-500">
+        HEIC selected
+        <br />
+        Preview not supported
+      </span>
     )
   ) : v.images?.[0] ? (
-    // 🌐 Existing URL from Cloudinary / DB
     v.images[0].toLowerCase().endsWith(".heic") ? (
       <span className="text-[10px] text-gray-500">
-        HEIC image<br />Preview may not show
+        HEIC image
+        <br />
+        Preview may not show
       </span>
     ) : (
       <img
@@ -572,22 +795,113 @@ const commitVariantColor = (index) => {
   ) : (
     <span className="text-xs text-gray-400">No image</span>
   )}
-
 </div>
- <div>
-    <label className="block text-xs">Replace Image</label>
-    <input type="file" accept="image/*" onChange={(e) => handleVariantImageFile(idx, e.target.files?.[0] || null)} disabled={v.removed} />
-  </div>
 
+                    </div>
+                    <label className="block text-sm font-medium mt-3 mb-2">
+                      Images for <span className="capitalize">{v.color}</span>
+                    </label>
+
+                    <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 cursor-pointer hover:border-blue-500 transition">
+                      <span className="text-sm text-gray-600">
+                        Click or drag images here
+                      </span>
+                      <span className="text-xs text-gray-400 mt-1">
+                        You can select multiple images (1st image = main)
+                      </span>
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        disabled={v.removed}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={(e) =>
+                          handleVariantImageFile(idx, e.target.files)
+                        }
+                      />
+                    </label>
                   </div>
+                  {v.images?.length > 0 && (
+  <div className="mt-3">
+    <p className="text-xs text-gray-500 mb-1">Existing images</p>
+    <div className="flex gap-2 flex-wrap">
+      {v.images.map((url, i) => (
+        <div key={i} className="relative">
+          <img
+            src={url}
+            alt=""
+            className={`h-16 w-16 object-cover rounded ${
+              i === 0 ? "ring-2 ring-green-500" : ""
+            }`}
+          />
+          {i === 0 && (
+            <span className="absolute top-0 left-0 bg-green-600 text-white text-[9px] px-1 rounded">
+              MAIN
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{v.newImageFiles?.length > 0 && (
+  <div className="mt-4">
+    <p className="text-xs text-blue-600 mb-1">New images to upload</p>
+
+    <div className="grid grid-cols-4 gap-3">
+      {v.newImageFiles.map((file, i) => (
+        <div key={i} className="relative group">
+          {file instanceof File && !file.name.toLowerCase().endsWith(".heic") ? (
+            <img
+              src={URL.createObjectURL(file)}
+              alt=""
+              className={`h-16 w-full object-cover rounded ${
+                i === 0 ? "ring-2 ring-blue-500" : ""
+              }`}
+            />
+          ) : (
+            <div className="h-16 flex items-center justify-center text-xs text-gray-500 border rounded">
+              HEIC
+            </div>
+          )}
+
+          {i === 0 && (
+            <span className="absolute top-0 left-0 bg-blue-600 text-white text-[9px] px-1 rounded">
+              MAIN
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => removeNewVariantImage(idx, i)}
+            className="absolute top-1 right-1 bg-black/60 text-white text-xs rounded-full w-5 h-5 hidden group-hover:flex items-center justify-center"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
 
                   <div className="ml-4 flex flex-col gap-2">
-                    <button type="button" onClick={() => handleRemoveVariant(idx)} className={`px-3 py-1 rounded ${v.removed ? "bg-yellow-400" : "bg-red-500 text-white"}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVariant(idx)}
+                      className={`px-3 py-1 rounded ${
+                        v.removed ? "bg-yellow-400" : "bg-red-500 text-white"
+                      }`}
+                    >
                       {v.removed ? "Undo Remove" : "Remove Variant"}
                     </button>
 
                     {/* Show variant metadata if exists */}
-                    {v.id && !String(v.id).startsWith("new-") && <div className="text-xs text-gray-500">ID: {v.id}</div>}
+                    {v.id && !String(v.id).startsWith("new-") && (
+                      <div className="text-xs text-gray-500">ID: {v.id}</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -597,7 +911,13 @@ const commitVariantColor = (index) => {
 
         {/* Submit */}
         <div>
-          <button type="submit" disabled={isSubmitting} className={`w-full py-3 rounded text-white ${isSubmitting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"}`}>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`w-full py-3 rounded text-white ${
+              isSubmitting ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
             {isSubmitting ? "Saving..." : "Save Changes"}
           </button>
         </div>
